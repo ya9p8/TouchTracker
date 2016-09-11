@@ -11,7 +11,15 @@ import UIKit
 class DrawView: UIView {
     var currentLines = [NSValue:Line]()
     var finishedLines = [Line]()
-    var selectedLineIndex: Int?
+    var panRecognizer: UIPanGestureRecognizer!
+    var selectedLineIndex: Int? {
+        didSet {
+            if selectedLineIndex == nil {
+                let menu = UIMenuController.sharedMenuController()
+                menu.setMenuVisible(false, animated: true)
+            }
+        }
+    }
     
     @IBInspectable var finishedLineColor: UIColor = UIColor.blackColor() {
         didSet {
@@ -43,6 +51,14 @@ class DrawView: UIView {
         tapRecognizer.delaysTouchesBegan = true
         tapRecognizer.requireGestureRecognizerToFail(doubleTapRecognizer)
         addGestureRecognizer(tapRecognizer)
+        
+        let longPressRecognizer = UILongPressGestureRecognizer(target: self, action: #selector(DrawView.longPress(_:)))
+        addGestureRecognizer(longPressRecognizer)
+        
+        panRecognizer = UIPanGestureRecognizer(target: self, action: "moveLine:")
+        panRecognizer.cancelsTouchesInView = false
+        addGestureRecognizer(panRecognizer)
+        
     }
     
     func strokeLine(line: Line) {
@@ -53,6 +69,17 @@ class DrawView: UIView {
         path.moveToPoint(line.begin)
         path.addLineToPoint(line.end)
         path.stroke()
+    }
+    
+    func deleteLine(sender: AnyObject) {
+        // Remove the selected line from the list of finishedLines
+        if let index = selectedLineIndex {
+            finishedLines.removeAtIndex(index)
+            selectedLineIndex = nil
+            
+            // Redraw everything
+            setNeedsDisplay()
+        }
     }
     
     override func drawRect(rect: CGRect) {
@@ -110,7 +137,52 @@ class DrawView: UIView {
         let point = gestureRecognizer.locationInView(self)
         selectedLineIndex = indexOfLineAtPoint(point)
         
+        // Grab the menu controller
+        let menu = UIMenuController.sharedMenuController()
+        
+        if selectedLineIndex != nil {
+            // Make DrawView the targe of tmenu item action messages
+            becomeFirstResponder()
+            
+            // Create na new "Delete" UIMenuItem
+            let deleteItem = UIMenuItem(title: "Delete", action: #selector(DrawView.deleteLine(_:)))
+            menu.menuItems = [deleteItem]
+            
+            // Tell the menu where it should come from and show it
+            menu.setTargetRect(CGRect(x: point.x, y: point.y, width: 2, height: 2), inView: self)
+            menu.setMenuVisible(true, animated: true)
+        } else {
+            // Hide the menu if no line is selected
+            menu.setMenuVisible(false, animated: true)
+        }
+        
         setNeedsDisplay()
+    }
+    
+    func longPress(gestureRecognizer: UIGestureRecognizer) {
+        print("Recognized long press")
+        
+        if gestureRecognizer.state == .Began {
+            let point = gestureRecognizer.locationInView(self)
+            selectedLineIndex = indexOfLineAtPoint(point)
+            
+            if selectedLineIndex != nil {
+                currentLines.removeAll(keepCapacity: false)
+            }
+        }
+        else if gestureRecognizer.state == .Ended {
+            selectedLineIndex = nil
+        }
+        
+        setNeedsDisplay()
+    }
+    
+    func moveLine(gestureRecognizer: UIGestureRecognizer){
+        print("Recognized a pan")
+    }
+    
+    override func canBecomeFirstResponder() -> Bool {
+        return true
     }
     
     override func touchesBegan(touches: Set<UITouch>, withEvent event: UIEvent?) {
