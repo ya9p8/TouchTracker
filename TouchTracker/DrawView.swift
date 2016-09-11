@@ -8,7 +8,7 @@
 
 import UIKit
 
-class DrawView: UIView {
+class DrawView: UIView, UIGestureRecognizerDelegate {
     var currentLines = [NSValue:Line]()
     var finishedLines = [Line]()
     var panRecognizer: UIPanGestureRecognizer!
@@ -55,7 +55,8 @@ class DrawView: UIView {
         let longPressRecognizer = UILongPressGestureRecognizer(target: self, action: #selector(DrawView.longPress(_:)))
         addGestureRecognizer(longPressRecognizer)
         
-        panRecognizer = UIPanGestureRecognizer(target: self, action: "moveLine:")
+        panRecognizer = UIPanGestureRecognizer(target: self, action: #selector(DrawView.moveLine(_:)))
+        panRecognizer.delegate = self
         panRecognizer.cancelsTouchesInView = false
         addGestureRecognizer(panRecognizer)
         
@@ -177,8 +178,31 @@ class DrawView: UIView {
         setNeedsDisplay()
     }
     
-    func moveLine(gestureRecognizer: UIGestureRecognizer){
+    func moveLine(gestureRecognizer: UIPanGestureRecognizer){
         print("Recognized a pan")
+        
+        // If a line is selected... 
+        if let index = selectedLineIndex {
+            // When the pan recognizer changes its position...
+            if gestureRecognizer.state == .Changed {
+                // How far has the pan moved?
+                let translation = gestureRecognizer.translationInView(self)
+                
+                // Add translation to the current beginning and end points of the line
+                finishedLines[index].begin.x += translation.x
+                finishedLines[index].begin.y += translation.y
+                finishedLines[index].end.x += translation.x
+                finishedLines[index].end.y += translation.y
+                
+                gestureRecognizer.setTranslation(CGPoint.zero, inView: self)
+                
+                // Redraw the screen
+                setNeedsDisplay()
+            }
+        } else {
+            // If no line is selected don't do anything
+            return
+        }
     }
     
     override func canBecomeFirstResponder() -> Bool {
@@ -238,5 +262,9 @@ class DrawView: UIView {
         currentLines.removeAll()
         
         setNeedsDisplay()
+    }
+    
+    func gestureRecognizer(gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWithGestureRecognizer otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+        return true
     }
 }
