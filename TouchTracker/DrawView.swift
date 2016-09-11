@@ -30,6 +30,14 @@ class DrawView: UIView {
         }
     }
     
+    required init?(coder aDecoder: NSCoder) {
+        super.init(coder: aDecoder)
+        
+        let doubleTapRecognizer = UITapGestureRecognizer(target: self, action: #selector(DrawView.doubleTap(_:)))
+        doubleTapRecognizer.numberOfTapsRequired = 2
+        addGestureRecognizer(doubleTapRecognizer)
+    }
+    
     func strokeLine(line: Line) {
         let path = UIBezierPath()
         path.lineWidth = lineThickness
@@ -50,6 +58,14 @@ class DrawView: UIView {
         for(_, line) in currentLines {
             strokeLine(line)
         }
+    }
+    
+    func doubleTap(gestureRecognizer: UIGestureRecognizer) {
+        print("Recognized a double tap")
+        
+        currentLines.removeAll(keepCapacity: false)
+        finishedLines.removeAll(keepCapacity: false)
+        setNeedsDisplay()
     }
     
     override func touchesBegan(touches: Set<UITouch>, withEvent event: UIEvent?) {
